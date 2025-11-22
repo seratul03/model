@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>House Price Predictor</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Custom Select Icon - Light Grey Arrow */
+    select.custom-select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding-right: 2.5rem;
+      background-repeat: no-repeat;
+      background-position: calc(100% - 1rem) center;
+      background-size: 0.8rem;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    }
+
+    /* Loader */
+    .loader {
+      border: 3px solid rgba(226, 232, 240, 0.5); /* Very light grey track */
+      border-top: 3px solid #0ea5e9; /* Blue spinner */
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Pop-in Animation */
+    .pop-in {
+      transform: translateY(10px) scale(.98);
+      opacity: 0;
+      transition: all .3s cubic-bezier(.25,.8,.25,1);
+    }
+    .pop-in.show {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    /* Soft Blur */
+    .blurred {
+      filter: blur(2px) opacity(0.7);
+      pointer-events: none;
+      transition: filter .2s;
+    }
+
+    /* Price Badge - Bright Gradient */
+    .price-badge {
+      background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%);
+      color: white;
+      padding: 0.5rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+
+    /* Ultra-Light Inputs */
+    .form-input {
+      background-color: #ffffff;
+      color: #4b5563; /* Gray-600 - Soft Text */
+      border: 1px solid #e5e7eb; /* Gray-200 - Barely visible border */
+      transition: all 0.2s;
+    }
+    .form-input:focus {
+      border-color: #bae6fd; /* Sky-200 */
+      box-shadow: 0 0 0 4px rgba(224, 242, 254, 0.4); /* Soft blue glow */
+      outline: none;
+    }
+    /* Subtle placeholder color */
+    .form-input::placeholder {
+      color: #d1d5db; 
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-gray-50 text-gray-800 font-sans">
+  
+  <div class="min-h-screen flex items-center justify-center p-4 md:p-8">
+    <div class="w-full max-w-6xl mx-auto">
+      
+      <div class="rounded-3xl overflow-hidden shadow-xl bg-white border border-gray-100">
+        
+        <div class="flex items-center justify-between p-8 border-b border-gray-100 bg-white">
+          <div>
+            <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">House Price Predictor</h1>
+            <p class="text-sm font-medium text-gray-400 mt-1"></p>
+          </div>
+
+          <div class="hidden sm:block text-right">
+            <div class="text-xs font-bold text-gray-300 uppercase tracking-widest">System Status</div>
+            <div class="text-sm text-green-500 font-semibold flex items-center justify-end gap-1">
+              <span class="w-2 h-2 rounded-full bg-green-400"></span> Online
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row">
+          
+          <div id="main-content" class="w-full md:w-2/3 p-8 bg-white relative z-10">
+            <form id="predict-form" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+              
+              <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Area (sq ft)</label>
+                  <input id="area" type="number" min="200" step="1" value="1500" required
+                         class="w-full rounded-xl px-4 py-3 form-input font-medium text-lg"/>
+                </div>
+                <div>
+                   <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Base PPSF</label>
+                   <input id="base_ppsf" type="number" min="0" step="0.01" value="0"
+                          class="w-full rounded-xl px-4 py-3 form-input font-medium text-lg"/>
+                   <p class="text-[10px] text-gray-400 mt-1.5 ml-1">0 for auto-calculation</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bedrooms</label>
+                <input id="bedrooms" type="number" min="1" step="1" value="3" required
+                       class="w-full rounded-xl px-4 py-3 form-input font-medium"/>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bathrooms</label>
+                <input id="bathrooms" type="number" min="1" step="1" value="2" required
+                       class="w-full rounded-xl px-4 py-3 form-input font-medium"/>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Stories</label>
+                <input id="stories" type="number" min="1" step="1" value="2"
+                       class="w-full rounded-xl px-4 py-3 form-input font-medium"/>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Parking</label>
+                <input id="parking" type="number" min="0" step="1" value="1"
+                       class="w-full rounded-xl px-4 py-3 form-input font-medium"/>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Main Road</label>
+                <select id="mainroad" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Guest Room</label>
+                <select id="guestroom" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                  <option value="0">No</option>
+                  <option value="1">Yes</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Basement</label>
+                <select id="basement" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                  <option value="0">No</option>
+                  <option value="1">Yes</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Hot Water</label>
+                <select id="hotwaterheating" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                  <option value="0">No</option>
+                  <option value="1">Yes</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Air Con</label>
+                <select id="airconditioning" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Preferred Area</label>
+                <select id="prefarea" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                  <option value="0">No</option>
+                  <option value="1">Yes</option>
+                </select>
+              </div>
+
+              <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Furnishing</label>
+                    <select id="furnishingstatus" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                    <option value="1">Semi-Furnished</option>
+                    <option value="0">Unfurnished</option>
+                    <option value="2">Furnished</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Location Type</label>
+                    <select id="location_type" class="custom-select w-full rounded-xl px-4 py-3 form-input font-medium bg-white">
+                    <option value="2">Urban</option>
+                    <option value="1">Suburban</option>
+                    <option value="0">Rural / Other</option>
+                    </select>
+                </div>
+              </div>
+
+              <div class="md:col-span-2 flex items-center gap-4 pt-6 mt-4 border-t border-gray-50">
+                <button id="predict-btn" type="submit"
+                        class="flex-1 md:flex-none inline-flex justify-center items-center gap-2 px-8 py-4 rounded-xl bg-sky-500 text-white font-bold hover:bg-sky-600 transition-all shadow-md hover:shadow-lg focus:ring-4 focus:ring-sky-100 transform hover:-translate-y-0.5">
+                  Predict Price
+                </button>
+
+                <button id="clear-btn" type="button" class="px-8 py-4 rounded-xl border border-gray-200 text-gray-500 font-bold hover:bg-gray-50 hover:text-gray-700 transition">
+                    Reset
+                </button>
+
+                <div id="status" class="ml-auto text-sm font-semibold text-sky-600"></div>
+              </div>
+            </form>
+          </div>
+
+          <div class="w-full md:w-1/3 bg-gray-50 border-l border-gray-100 p-8">
+             <div class="sticky top-8">
+                 <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Prediction Result</div>
+                 
+                 <div id="result" class="pop-in bg-white rounded-2xl p-8 shadow-lg border border-gray-100 mb-6">
+                    <div class="flex flex-col items-center justify-center text-center">
+                        <p class="text-sm font-semibold text-gray-400 mb-3">Estimated Market Value</p>
+                        <div id="result-price" class="price-badge mb-2">—</div>
+                        <div class="h-1 w-12 bg-gray-100 rounded-full my-4"></div>
+                         <div id="result-text" class="text-sm text-gray-600 leading-relaxed">
+                             Submit the form to see the value.
+                         </div>
+                    </div>
+                 </div>
+                 
+                 <div class="text-[11px] text-gray-400 text-center leading-relaxed">
+                    Calculations are based on the trained Machine Learning model. 
+                    <br>
+                 </div>
+             </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Form Logic (Dark mode logic removed) ---
+    const form = document.getElementById('predict-form');
+    const statusEl = document.getElementById('status');
+    const resultCard = document.getElementById('result');
+    const resultPrice = document.getElementById('result-price');
+    const resultText = document.getElementById('result-text');
+    const mainContent = document.getElementById('main-content');
+    const predictBtn = document.getElementById('predict-btn');
+    const clearBtn = document.getElementById('clear-btn');
+
+    function setLoading(loading) {
+      if (loading) {
+        statusEl.innerHTML = '<div class="flex items-center gap-2"><span class="loader"></span> <span>Calculating...</span></div>';
+        predictBtn.setAttribute('disabled', 'disabled');
+        predictBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        mainContent.classList.add('blurred');
+      } else {
+        statusEl.textContent = '';
+        predictBtn.removeAttribute('disabled');
+        predictBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+        mainContent.classList.remove('blurred');
+      }
+    }
+
+    function formatINR(value) {
+      return new Intl.NumberFormat('en-IN', { 
+        style: 'currency', 
+        currency: 'INR',
+        maximumFractionDigits: 0 
+      }).format(value);
+    }
+
+    function showResult(priceText, detailsText) {
+      resultPrice.textContent = priceText;
+      resultText.textContent = detailsText;
+      
+      // Reset Animation
+      resultCard.classList.remove('show');
+      void resultCard.offsetWidth; // trigger reflow
+      resultCard.classList.add('show');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setLoading(true);
+
+      // Build payload safely
+      const formData = {};
+      Array.from(form.elements).forEach(el => {
+        if (el.id && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) {
+          formData[el.id] = Number(el.value);
+        }
+      });
+
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(formData)
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Prediction failed');
+
+        const price = data.bounded_prediction || data.boundedPrediction;
+        const displayPrice = price ? formatINR(price) : '—';
+        const displayText = price 
+          ? `The estimated valuation is approx. ${(price/100000).toFixed(2)} Lakhs based on current market trends.`
+          : (data.message || 'Calculation complete.');
+
+        showResult(displayPrice, displayText);
+
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      form.reset();
+      showResult('—', 'Submit the form to see the value.');
+    });
+
+    // Initial Fade In
+    setTimeout(() => resultCard.classList.add('show'), 100);
+  </script>
+</body>
+</html>
